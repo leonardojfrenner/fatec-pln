@@ -1,0 +1,47 @@
+# Diretórios a ignorar
+front/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Arquivos de ambiente e configuração
+.env
+.env.local
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Documentação
+README.md
+front/README.md
+GUIA_RAPIDO.md
+
+# Arquivos de teste
+test_*.py
+*_test.py
+
+# Cache do Hugging Face (será baixado no container)
+.cache/
+

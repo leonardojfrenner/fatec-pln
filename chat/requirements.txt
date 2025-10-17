@@ -1,0 +1,14 @@
+# Web Framework
+fastapi==0.119.0
+uvicorn[standard]==0.37.0
+
+# LLM e Machine Learning
+transformers
+torch
+accelerate
+tokenizers
+
+# Utilidades
+pydantic==2.12.2
+python-multipart==0.0.9
+

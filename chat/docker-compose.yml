@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: chat-llm-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Opcional: Adicione seu token do Hugging Face
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      # Cache do modelo para não baixar toda vez
+      - huggingface-cache:/root/.cache/huggingface
+    restart: unless-stopped
+    # Recursos (opcional - ajuste conforme sua máquina)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+volumes:
+  huggingface-cache:
+    driver: local
+

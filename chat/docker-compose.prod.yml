@@ -1,0 +1,33 @@
+version: '3.8'
+
+# Docker Compose para usar a imagem publicada no Docker Hub
+# Uso: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  api:
+    image: leonardorennerdev/chat-llm-api:latest
+    container_name: chat-llm-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Opcional: Token do Hugging Face
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      # Cache do modelo para não baixar toda vez
+      - huggingface-cache:/root/.cache/huggingface
+    restart: unless-stopped
+    # Recursos (ajuste conforme sua máquina)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+volumes:
+  huggingface-cache:
+    driver: local
+
+
