@@ -316,7 +316,7 @@
         const typing = showTyping();
 
         try {
-          const res = await fetch("https://container-service-1.7q33f42wtcfq2.us-east-1.cs.amazonlightsail.com//pergunta", {
+          const res = await fetch("http://localhost:8000/pergunta", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
