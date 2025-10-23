@@ -319,6 +319,61 @@
         color: #111827;
         margin-top: 10px;
       }
+
+      .modal {
+        display: none; /* Oculto por padrão */
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+
+      .modal-content {
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        width: 300px;
+        margin: 15% auto;
+        text-align: center;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        animation: aparecer 0.2s ease-in-out;
+      }
+
+      .modal-buttons {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-around;
+      }
+
+      button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      .danger {
+        background-color: #e74c3c;
+        color: white;
+      }
+
+      @keyframes aparecer {
+        from {
+          transform: scale(0.9);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
     </style>
   </head>
 
@@ -384,6 +439,17 @@
       </main>
     </div>
 
+    <!-- Modal de confirmação -->
+    <div id="confirmModal" class="modal">
+      <div class="modal-content">
+        <p>Tem certeza que deseja deletar este chat?</p>
+        <div class="modal-buttons">
+          <button id="cancelarBtn">Cancelar</button>
+          <button id="confirmarBtn" class="danger">Deletar</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const inputBox = document.querySelector(".input-box");
       const sendBtn = document.querySelector(".send-btn");
@@ -435,15 +501,16 @@
       async function criarNovoChat() {
         currentChatId = null;
         firstMessage = true;
-        
+
         // Limpa a área de chat
-        chatArea.innerHTML = '<h2 class="welcome-text">No que você está Pensando?</h2>';
-        
+        chatArea.innerHTML =
+          '<h2 class="welcome-text">No que você está Pensando?</h2>';
+
         // Remove seleção de todos os chats
-        document.querySelectorAll('.chat-item').forEach(item => {
-          item.classList.remove('active');
+        document.querySelectorAll(".chat-item").forEach((item) => {
+          item.classList.remove("active");
         });
-        
+
         // Foca no input
         inputBox.focus();
       }
@@ -452,15 +519,16 @@
         try {
           const res = await fetch("http://localhost:8001/chats/");
           const data = await res.json();
-          
+
           chatList.innerHTML = "";
-          
+
           if (data.chats && data.chats.length > 0) {
-            data.chats.forEach(chat => {
+            data.chats.forEach((chat) => {
               adicionarChatNaLista(chat);
             });
           } else {
-            chatList.innerHTML = '<div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 13px;">Nenhum chat ainda</div>';
+            chatList.innerHTML =
+              '<div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 13px;">Nenhum chat ainda</div>';
           }
         } catch (err) {
           console.error("Erro ao carregar chats:", err);
@@ -471,13 +539,16 @@
         const chatItem = document.createElement("div");
         chatItem.classList.add("chat-item");
         chatItem.dataset.chatId = chat._id;
-        
-        const dataFormatada = new Date(chat.atualizado_em).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        });
-        
+
+        const dataFormatada = new Date(chat.atualizado_em).toLocaleDateString(
+          "pt-BR",
+          {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }
+        );
+
         chatItem.innerHTML = `
           <div class="chat-item-content" onclick="carregarChat('${chat._id}')">
             <div class="chat-item-title">${chat.titulo}</div>
@@ -489,7 +560,7 @@
             </button>
           </div>
         `;
-        
+
         chatList.appendChild(chatItem);
       }
 
@@ -497,28 +568,28 @@
         try {
           const res = await fetch(`http://localhost:8001/chats/${chatId}`);
           const data = await res.json();
-          
+
           if (data.chat) {
             currentChatId = chatId;
             firstMessage = true;
-            
+
             // Limpa a área de chat
             chatArea.innerHTML = "";
-            
+
             // Carrega todas as mensagens
-            data.chat.mensagens.forEach(msg => {
+            data.chat.mensagens.forEach((msg) => {
               appendMessage("user", msg.pergunta);
               appendMessage("bot", msg.resposta);
             });
-            
+
             // Atualiza seleção visual
-            document.querySelectorAll('.chat-item').forEach(item => {
-              item.classList.remove('active');
+            document.querySelectorAll(".chat-item").forEach((item) => {
+              item.classList.remove("active");
               if (item.dataset.chatId === chatId) {
-                item.classList.add('active');
+                item.classList.add("active");
               }
             });
-            
+
             if (data.chat.mensagens.length === 0) {
               firstMessage = true;
             }
@@ -528,33 +599,67 @@
         }
       }
 
-      async function deletarChat(event, chatId) {
-        event.stopPropagation();
-        
-        if (!confirm("Tem certeza que deseja deletar este chat?")) {
-          return;
-        }
-        
+      let chatParaDeletar = null;
+
+      function abrirModalConfirmacao(chatId) {
+        chatParaDeletar = chatId;
+        document.getElementById("confirmModal").style.display = "block";
+      }
+
+      function fecharModal() {
+        document.getElementById("confirmModal").style.display = "none";
+        chatParaDeletar = null;
+      }
+
+      async function confirmarDelecao() {
+        if (!chatParaDeletar) return;
+
         try {
-          const res = await fetch(`http://localhost:8001/chats/${chatId}/deletar`, {
-            method: "DELETE",
-          });
-          
+          const res = await fetch(
+            `http://localhost:8001/chats/${chatParaDeletar}/deletar`,
+            {
+              method: "DELETE",
+            }
+          );
+
           if (res.ok) {
-            // Remove da lista
-            const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+            const chatItem = document.querySelector(
+              `[data-chat-id="${chatParaDeletar}"]`
+            );
             if (chatItem) chatItem.remove();
-            
-            // Se era o chat atual, limpa a área
-            if (currentChatId === chatId) {
+
+            if (currentChatId === chatParaDeletar) {
               criarNovoChat();
             }
+          } else {
+            alert("Erro ao deletar chat");
           }
         } catch (err) {
           console.error("Erro ao deletar chat:", err);
           alert("Erro ao deletar chat");
+        } finally {
+          fecharModal();
         }
       }
+
+      async function deletarChat(event, chatId) {
+        event.stopPropagation();
+        abrirModalConfirmacao(chatId);
+      }
+
+      // Eventos do modal
+      document
+        .getElementById("cancelarBtn")
+        .addEventListener("click", fecharModal);
+      document
+        .getElementById("confirmarBtn")
+        .addEventListener("click", confirmarDelecao);
+
+      // Fecha se clicar fora
+      window.addEventListener("click", (event) => {
+        const modal = document.getElementById("confirmModal");
+        if (event.target === modal) fecharModal();
+      });
 
       inputBox.addEventListener("input", function () {
         this.style.height = "auto";
@@ -580,20 +685,20 @@
             body: JSON.stringify({
               max_tokens: 256,
               question: message,
-              chat_id: currentChatId
+              chat_id: currentChatId,
             }),
           });
 
           const data = await res.json();
           typing.remove();
-          
+
           // Atualiza o chat_id se for um novo chat
           if (data.chat_id && !currentChatId) {
             currentChatId = data.chat_id;
             // Recarrega a lista de chats
             carregarChats();
           }
-          
+
           appendMessage(
             "bot",
             data.response || "Desculpe, não consegui entender 😅"
@@ -604,7 +709,6 @@
           console.error(err);
         }
       });
-
 
       inputBox.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
