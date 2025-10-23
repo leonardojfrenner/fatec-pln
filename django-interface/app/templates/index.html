@@ -490,13 +490,36 @@
       }
 
       // Salvar o chat
-      function baixarChat() {
+      async function baixarChat() {
         if (!currentChatId) return;
 
         try {
-          const res = fetch(
+          const res = await fetch(
             `http://localhost:8001/download-json/${currentChatId}`
           );
+
+          if (!res.ok) {
+            throw new Error("Erro ao baixar o arquivo JSON");
+          }
+
+          // Transforma a resposta em Blob (dados brutos)
+          const blob = await res.blob();
+
+          // Cria uma URL temporária para o Blob
+          const url = window.URL.createObjectURL(blob);
+
+          // Cria um link invisível para simular o download
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `chat-${currentChatId}.json`; // Nome do arquivo
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          // Libera a URL da memória
+          window.URL.revokeObjectURL(url);
+
+          console.log("Download concluído com sucesso!");
         } catch (err) {
           console.error("Erro ao baixar chat:", err);
         }
