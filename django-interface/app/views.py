@@ -1,10 +1,11 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
+import csv
 from .models import ChatManager
-
+import io
 # Create your views here.
 def index(request):
     return render(request, 'index.html')
@@ -171,4 +172,41 @@ def atualizar_titulo_chat(request, chat_id):
         return JsonResponse({'mensagem': 'Título atualizado com sucesso'})
     
     except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
+@require_http_methods(["GET"])
+def download_chat_json(request, chat_id):
+    """Download do chat em formato JSON"""
+    try:
+        chat_manager = ChatManager()
+        chat = chat_manager.obter_chat(chat_id)
+
+        if not chat:
+            return JsonResponse({'error': 'Chat não encontrado'}, status=404)
+
+        # Converte o chat em JSON serializável
+        def serialize_mongo(obj):
+            """Converte tipos do MongoDB (ObjectId, datetime, etc.)"""
+            from bson import ObjectId
+            from datetime import datetime
+            if isinstance(obj, ObjectId):
+                return str(obj)
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return obj
+
+        json_data = json.dumps(chat, default=serialize_mongo, indent=2, ensure_ascii=False)
+
+        # Cria resposta HTTP para download
+        response = HttpResponse(json_data, content_type='application/json; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="chat_{chat_id}.json"'
+        response['Content-Length'] = len(json_data.encode("utf-8"))
+
+        print(f"[DEBUG] JSON gerado com sucesso ({len(json_data.encode('utf-8'))} bytes)")
+        return response
+
+    except Exception as e:
+        print(f"[ERRO] {e}")
         return JsonResponse({'error': str(e)}, status=500)

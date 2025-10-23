@@ -396,8 +396,8 @@
       <main class="main-content">
         <header class="top-bar">
           <h1 class="chatgpt-title">DLI</h1>
-          <button class="action-btn">
-            <i class="fas fa-star" style="color: #ffc107"></i> Assinar Plus
+          <button class="action-btn" onclick="baixarChat()">
+            Baixar <i class="fa-solid fa-download"></i>
           </button>
         </header>
 
@@ -487,6 +487,19 @@
 
         chatArea.appendChild(msg);
         scrollToBottom();
+      }
+
+      // Salvar o chat
+      function baixarChat() {
+        if (!currentChatId) return;
+
+        try {
+          const res = fetch(
+            `http://localhost:8001/download-json/${currentChatId}`
+          );
+        } catch (err) {
+          console.error("Erro ao baixar chat:", err);
+        }
       }
 
       function showTyping() {
