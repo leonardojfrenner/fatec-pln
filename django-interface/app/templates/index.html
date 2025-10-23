@@ -374,6 +374,31 @@
           opacity: 1;
         }
       }
+
+      .primary {
+        background: #3498db;
+        color: white;
+      }
+
+      .secondary {
+        background: #2ecc71;
+        color: white;
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: transparent;
+        border: none;
+        font-size: 18px;
+        color: #555;
+        cursor: pointer;
+      }
+
+      .close-btn:hover {
+        color: #000;
+      }
     </style>
   </head>
 
@@ -396,7 +421,7 @@
       <main class="main-content">
         <header class="top-bar">
           <h1 class="chatgpt-title">DLI</h1>
-          <button class="action-btn" onclick="baixarChat()">
+          <button class="action-btn" onclick="abrirDownloadModal()">
             Baixar <i class="fa-solid fa-download"></i>
           </button>
         </header>
@@ -450,6 +475,24 @@
       </div>
     </div>
 
+    <!-- Modal de opções de download -->
+    <div id="downloadModal" class="modal">
+      <div class="modal-content">
+        <h3>Escolha o formato para download</h3>
+        <div class="modal-buttons">
+          <button id="opcaoCSV" class="primary">
+            <i class="fa-solid fa-file-csv"></i> CSV
+          </button>
+          <button id="opcaoJSON" class="secondary">
+            <i class="fa-solid fa-file-code"></i> JSON
+          </button>
+        </div>
+        <button class="close-btn" id="fecharModal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
     <script>
       const inputBox = document.querySelector(".input-box");
       const sendBtn = document.querySelector(".send-btn");
@@ -490,7 +533,7 @@
       }
 
       // Salvar o chat
-      async function baixarChat() {
+      async function baixarChatJSON() {
         if (!currentChatId) return;
 
         try {
@@ -522,6 +565,41 @@
           console.log("Download concluído com sucesso!");
         } catch (err) {
           console.error("Erro ao baixar chat:", err);
+        }
+      }
+
+      async function baixarChatCSV() {
+        if (!currentChatId) return;
+
+        try {
+          const res = await fetch(
+            `http://localhost:8001/download-csv/${currentChatId}`
+          );
+
+          if (!res.ok) {
+            throw new Error("Erro ao baixar o arquivo CSV");
+          }
+
+          // Transforma a resposta em Blob (dados brutos)
+          const blob = await res.blob();
+
+          // Cria uma URL temporária para o Blob
+          const url = window.URL.createObjectURL(blob);
+
+          // Cria um link invisível para simular o download
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `chat-${currentChatId}.csv`; // Nome do arquivo
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          // Libera a URL da memória
+          window.URL.revokeObjectURL(url);
+
+          console.log("Download do CSV concluído com sucesso!");
+        } catch (err) {
+          console.error("Erro ao baixar chat CSV:", err);
         }
       }
 
@@ -751,6 +829,37 @@
           e.preventDefault();
           sendBtn.click();
         }
+      });
+
+      // 🪟 Controle do modal
+      function abrirDownloadModal() {
+        if (!currentChatId) return;
+        document.getElementById("downloadModal").style.display = "flex";
+      }
+
+      function fecharDownloadModal() {
+        document.getElementById("downloadModal").style.display = "none";
+      }
+
+      // Eventos dos botões do modal
+      document.getElementById("opcaoCSV").addEventListener("click", () => {
+        fecharDownloadModal();
+        baixarChatCSV();
+      });
+
+      document.getElementById("opcaoJSON").addEventListener("click", () => {
+        fecharDownloadModal();
+        baixarChatJSON();
+      });
+
+      document
+        .getElementById("fecharModal")
+        .addEventListener("click", fecharDownloadModal);
+
+      // Fecha modal clicando fora
+      window.addEventListener("click", (e) => {
+        const modal = document.getElementById("downloadModal");
+        if (e.target === modal) fecharDownloadModal();
       });
     </script>
   </body>
