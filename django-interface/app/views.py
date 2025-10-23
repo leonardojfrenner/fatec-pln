@@ -210,3 +210,23 @@ def download_chat_json(request, chat_id):
     except Exception as e:
         print(f"[ERRO] {e}")
         return JsonResponse({'error': str(e)}, status=500)
+    
+@require_http_methods(["GET"])
+def download_chat_csv(request, chat_id):
+    # Busca os dados do chat (exemplo)
+    chat_data = [
+        {"pergunta": "2+2?", "resposta": "2 + 2 é 4.", "timestamp": "23/10/2025 09:44"},
+        {"pergunta": "4*4?", "resposta": "4 multiplicado por 4 é 16.", "timestamp": "23/10/2025 15:11"},
+    ]
+
+    # Cria um buffer com codificação UTF-8 com BOM
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=',')
+    writer.writerow(["Pergunta", "Resposta", "Timestamp"])
+
+    for item in chat_data:
+        writer.writerow([item["pergunta"], item["resposta"], item["timestamp"]])
+
+    response = HttpResponse(buffer.getvalue().encode('utf-8-sig'), content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="chat-{chat_id}.csv"'
+    return response

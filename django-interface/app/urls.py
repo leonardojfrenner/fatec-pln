@@ -12,4 +12,5 @@ urlpatterns = [
     path('chats/<str:chat_id>/deletar', views.deletar_chat, name='deletar_chat'),
     path('chats/<str:chat_id>/titulo', views.atualizar_titulo_chat, name='atualizar_titulo_chat'),
     path('download-json/<str:chat_id>/', views.download_chat_json, name='download-json'),
+    path('download-csv/<str:chat_id>/', views.download_chat_csv, name='download-csv'),
 ]
