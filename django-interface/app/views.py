@@ -1,9 +1,10 @@
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
 import csv
+import time
 from .models import ChatManager
 import io
 # Create your views here.
@@ -76,6 +77,113 @@ def pergunta(request):
         print(f"[ERROR] Erro na view pergunta: {e}")
         import traceback
         traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def pergunta_stream(request):
+    """
+    Endpoint para streaming em tempo real usando SSE
+    """
+    # Tratar OPTIONS request (preflight CORS)
+    if request.method == 'OPTIONS':
+        response = JsonResponse({'status': 'ok'})
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Accept'
+        return response
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        pergunta_usuario = data.get('question', '')
+        chat_id = data.get('chat_id')
+        show_thinking = data.get('show_thinking', True)
+        
+        if not pergunta_usuario:
+            return JsonResponse({'error': 'Pergunta não fornecida'}, status=400)
+        
+        def event_stream():
+            """Gerador para Server-Sent Events"""
+            nonlocal chat_id  # Permitir modificar chat_id da função externa
+            
+            try:
+                import requests
+                
+                # 1. Enviar evento de início
+                yield f"event: start\ndata: {json.dumps({'message': 'Processando...'})}\n\n"
+                time.sleep(0.1)
+                
+                # 2. Chamar API do modelo
+                print(f"[STREAM] Chamando API para: {pergunta_usuario}")
+                api_response = requests.post(
+                    "http://localhost:8000/pergunta",
+                    json={"question": pergunta_usuario},
+                    timeout=120
+                )
+                
+                if api_response.status_code == 200:
+                    api_data = api_response.json()
+                    thinking_text = api_data.get('thinking', '')
+                    response_text = api_data.get('response', '')
+                    
+                    # 3. Streaming do THINKING (se habilitado)
+                    if show_thinking and thinking_text:
+                        yield f"event: thinking_start\ndata: {json.dumps({'message': 'Pensando...'})}\n\n"
+                        time.sleep(0.2)
+                        
+                        # Enviar thinking palavra por palavra
+                        words = thinking_text.split()
+                        for i, word in enumerate(words):
+                            yield f"event: thinking\ndata: {json.dumps({'word': word, 'index': i})}\n\n"
+                            time.sleep(0.05)  # 50ms entre palavras
+                        
+                        yield f"event: thinking_end\ndata: {json.dumps({'message': 'Pensamento concluído'})}\n\n"
+                        time.sleep(0.3)
+                    
+                    # 4. Streaming da RESPOSTA
+                    yield f"event: response_start\ndata: {json.dumps({'message': 'Respondendo...'})}\n\n"
+                    time.sleep(0.2)
+                    
+                    # Enviar resposta palavra por palavra
+                    words = response_text.split()
+                    for i, word in enumerate(words):
+                        yield f"event: response\ndata: {json.dumps({'word': word, 'index': i, 'total': len(words)})}\n\n"
+                        time.sleep(0.08)  # 80ms entre palavras
+                    
+                    # 5. Salvar no MongoDB
+                    chat_manager = ChatManager()
+                    if not chat_id:
+                        chat_id = chat_manager.criar_chat(titulo=f"Chat - {pergunta_usuario[:30]}")
+                    
+                    chat_manager.adicionar_mensagem(chat_id, pergunta_usuario, response_text)
+                    
+                    # 6. Evento de finalização
+                    yield f"event: complete\ndata: {json.dumps({'chat_id': chat_id, 'message': 'Concluído!'})}\n\n"
+                    
+                else:
+                    yield f"event: error\ndata: {json.dumps({'message': f'Erro na API: {api_response.status_code}'})}\n\n"
+                
+            except Exception as e:
+                print(f"[STREAM ERROR] {e}")
+                import traceback
+                traceback.print_exc()
+                yield f"event: error\ndata: {json.dumps({'message': f'Erro: {str(e)}'})}\n\n"
+        
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type='text/event-stream'
+        )
+        response['Cache-Control'] = 'no-cache, no-transform'
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Accept'
+        
+        return response
+        
+    except Exception as e:
+        print(f"[ERROR] Erro no streaming: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 

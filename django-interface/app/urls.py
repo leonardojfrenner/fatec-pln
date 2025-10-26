@@ -6,6 +6,7 @@ app_name = 'app'
 urlpatterns = [
     path('', views.index, name='index'),
     path('pergunta', views.pergunta, name='pergunta'),
+    path('pergunta-stream', views.pergunta_stream, name='pergunta_stream'),
     path('chats/', views.listar_chats, name='listar_chats'),
     path('chats/criar', views.criar_chat, name='criar_chat'),
     path('chats/<str:chat_id>', views.obter_chat, name='obter_chat'),

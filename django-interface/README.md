@@ -68,21 +68,51 @@ docker exec -it meu-mongodb mongosh -u admin -p admin --authenticationDatabase a
 source venv/bin/activate
 ```
 
-### 3. Instale as dependências (se ainda não instalou)
+### 3. Instale as dependências
 
 ```bash
+# IMPORTANTE: Use o -r para instalar do arquivo requirements.txt
 pip install -r requirements.txt
+
+# Ou se preferir, instale individualmente:
+# pip install Django==5.2.7
+# pip install pymongo==4.15.3
+# pip install dnspython==2.8.0
+# pip install django-cors-headers==4.9.0
+# pip install requests==2.32.5
 ```
 
 ### 4. Execute o servidor
 
 ```bash
-python manage.py runserver
+# IMPORTANTE: Use a porta 8001 pois a porta 8000 é usada pela API FastAPI
+python manage.py runserver 8001
 ```
+
+> **⚠️ ATENÇÃO:** Se você tem uma API FastAPI rodando na porta 8000, o Django **DEVE** rodar na porta 8001 para evitar conflitos!
 
 ### 5. Acesse o sistema
 
-Abra seu navegador em: `http://localhost:8000`
+Abra seu navegador em: `http://localhost:8001`
+
+> **Nota:** Se sua API FastAPI não estiver rodando, você pode usar a porta 8000. Mas o recomendado é sempre usar 8001 para o Django.
+
+## 🌐 Arquitetura de Portas
+
+O projeto utiliza 3 portas diferentes:
+
+| Serviço | Porta | URL | Descrição |
+|---------|-------|-----|-----------|
+| **API FastAPI (Modelo LLM)** | 8000 | `http://localhost:8000` | API do modelo de IA (Docker) |
+| **Django Interface** | 8001 | `http://localhost:8001` | Interface web do chat |
+| **MongoDB** | 27017 | `localhost:27017` | Banco de dados (Docker) |
+
+### Fluxo de Comunicação:
+```
+Navegador (8001) → Django (8001) → API FastAPI (8000) → Modelo LLM
+                       ↓
+                  MongoDB (27017)
+```
 
 ## 📡 API Endpoints
 
@@ -217,7 +247,20 @@ docker logs meu-mongodb
 - Confirme as credenciais: usuário `admin`, senha `admin`
 - Teste a conexão: `docker exec -it meu-mongodb mongosh -u admin -p admin --authenticationDatabase admin`
 
-#### Erro de porta 8000:
-- Se sua API FastAPI já usa a porta 8000, o Django roda na porta 8001
-- Acesse: `http://localhost:8001`
+#### ⚠️ Erro de porta 8000 (MUITO IMPORTANTE):
+Se você vê este erro ao iniciar o Django:
+```
+Error: That port is already in use.
+```
+
+**Solução:**
+```bash
+# PARE o servidor Django (Ctrl+C)
+# Inicie novamente na porta 8001
+python manage.py runserver 8001
+```
+
+**Por quê?** Sua API FastAPI (modelo LLM) já está usando a porta 8000. O Django **PRECISA** rodar na porta 8001.
+
+**Acesse:** `http://localhost:8001` (não `http://localhost:8000`)
 

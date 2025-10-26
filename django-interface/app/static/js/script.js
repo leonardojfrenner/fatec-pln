@@ -292,36 +292,150 @@ sendBtn.addEventListener("click", async function () {
   inputBox.style.height = "56px";
   sendBtn.disabled = true;
 
-  const typing = showTyping();
+  // Usar streaming em tempo real
+  await enviarMensagemComStreaming(message);
+});
+
+// Função para enviar mensagem com streaming
+async function enviarMensagemComStreaming(message) {
+  let thinkingElement = null;
+  let responseElement = null;
+  let thinkingText = "";
+  let responseText = "";
+  let currentEvent = null;
 
   try {
-    const res = await fetch("http://localhost:8001/pergunta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        max_tokens: 256,
-        question: message,
-        chat_id: currentChatId,
-      }),
+    // Preparar dados para POST
+    const requestBody = JSON.stringify({
+      question: message,
+      chat_id: currentChatId || "",
+      show_thinking: true,
     });
 
-    const data = await res.json();
-    typing.remove();
+    console.log("[STREAM] Enviando requisição...");
 
-    // Atualiza o chat_id se for um novo chat
-    if (data.chat_id && !currentChatId) {
-      currentChatId = data.chat_id;
-      // Recarrega a lista de chats
-      carregarChats();
+    // Usar fetch com streaming manual (EventSource não suporta POST)
+    const response = await fetch("http://localhost:8001/pergunta-stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: requestBody,
+    });
+
+    console.log("[STREAM] Resposta recebida, iniciando leitura...");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        console.log("[STREAM] Leitura concluída");
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        console.log("[STREAM] Linha recebida:", line);
+        
+        if (line.startsWith("event:")) {
+          currentEvent = line.slice(7).trim();
+          console.log("[STREAM] Evento:", currentEvent);
+          continue;
+        }
+
+        if (line.startsWith("data:")) {
+          const data = JSON.parse(line.slice(6));
+          console.log("[STREAM] Data:", data, "Evento:", currentEvent);
+
+          // Processar eventos baseado no tipo
+          if (currentEvent === "start") {
+            console.log("[STREAM] Início do processamento");
+          } 
+          else if (currentEvent === "thinking_start") {
+            console.log("[STREAM] Iniciando thinking");
+            if (firstMessage) {
+              const welcome = document.querySelector(".welcome-text");
+              if (welcome) welcome.remove();
+              firstMessage = false;
+            }
+
+            thinkingElement = document.createElement("div");
+            thinkingElement.classList.add("message", "thinking");
+            thinkingElement.innerHTML = '<span class="thinking-label">🤔 Pensando:</span>';
+            chatArea.appendChild(thinkingElement);
+            scrollToBottom();
+          } 
+          else if (currentEvent === "thinking" && data.word) {
+            console.log("[STREAM] Thinking word:", data.word);
+            thinkingText += data.word + " ";
+            if (thinkingElement) {
+              thinkingElement.innerHTML = `<span class="thinking-label">🤔 Pensando:</span>${thinkingText}<span class="streaming-cursor"></span>`;
+              scrollToBottom();
+            }
+          } 
+          else if (currentEvent === "thinking_end") {
+            console.log("[STREAM] Thinking finalizado");
+            if (thinkingElement) {
+              thinkingElement.innerHTML = `<span class="thinking-label">🤔 Pensando:</span>${thinkingText}`;
+            }
+          } 
+          else if (currentEvent === "response_start") {
+            console.log("[STREAM] Iniciando resposta");
+            responseElement = document.createElement("div");
+            responseElement.classList.add("message", "bot", "streaming-message");
+            chatArea.appendChild(responseElement);
+            scrollToBottom();
+          } 
+          else if (currentEvent === "response" && data.word) {
+            console.log("[STREAM] Response word:", data.word);
+            responseText += data.word + " ";
+            if (responseElement) {
+              responseElement.textContent = responseText;
+
+              const cursor = document.createElement("span");
+              cursor.className = "streaming-cursor";
+              responseElement.appendChild(cursor);
+
+              scrollToBottom();
+            }
+          } 
+          else if (currentEvent === "complete") {
+            console.log("[STREAM] Completo!", data);
+            if (responseElement) {
+              responseElement.textContent = responseText.trim();
+            }
+
+            if (data.chat_id && !currentChatId) {
+              currentChatId = data.chat_id;
+              carregarChats();
+            }
+
+            sendBtn.disabled = false;
+            console.log("[STREAM] Concluído!");
+          }
+          else if (currentEvent === "error") {
+            console.error("[STREAM] Erro:", data.message);
+            appendMessage("bot", `⚠️ ${data.message}`);
+            sendBtn.disabled = false;
+          }
+        }
+      }
     }
-
-    appendMessage("bot", data.response || "Desculpe, não consegui entender 😅");
   } catch (err) {
-    typing.remove();
+    console.error("Erro:", err);
     appendMessage("bot", "⚠️ Erro ao conectar ao servidor.");
-    console.error(err);
+    sendBtn.disabled = false;
   }
-});
+}
 
 inputBox.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
