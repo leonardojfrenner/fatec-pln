@@ -317,20 +317,52 @@ def download_chat_json(request, chat_id):
     
 @require_http_methods(["GET"])
 def download_chat_csv(request, chat_id):
-    # Busca os dados do chat (exemplo)
-    chat_data = [
-        {"pergunta": "2+2?", "resposta": "2 + 2 é 4.", "timestamp": "23/10/2025 09:44"},
-        {"pergunta": "4*4?", "resposta": "4 multiplicado por 4 é 16.", "timestamp": "23/10/2025 15:11"},
-    ]
+    """Download do chat em formato CSV"""
+    try:
+        # Buscar chat do MongoDB
+        chat_manager = ChatManager()
+        chat = chat_manager.obter_chat(chat_id)
 
-    # Cria um buffer com codificação UTF-8 com BOM
-    buffer = io.StringIO()
-    writer = csv.writer(buffer, delimiter=',')
-    writer.writerow(["Pergunta", "Resposta", "Timestamp"])
+        if not chat:
+            return JsonResponse({'error': 'Chat não encontrado'}, status=404)
 
-    for item in chat_data:
-        writer.writerow([item["pergunta"], item["resposta"], item["timestamp"]])
+        # Cria um buffer com codificação UTF-8 com BOM
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, delimiter=',', quoting=csv.QUOTE_ALL)
+        
+        # Cabeçalho
+        writer.writerow(["Pergunta", "Resposta", "Timestamp"])
 
-    response = HttpResponse(buffer.getvalue().encode('utf-8-sig'), content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="chat-{chat_id}.csv"'
-    return response
+        # Escrever todas as mensagens do chat
+        for mensagem in chat.get('mensagens', []):
+            pergunta = mensagem.get('pergunta', '')
+            resposta = mensagem.get('resposta', '')
+            timestamp = mensagem.get('timestamp')
+            
+            # Formatar timestamp
+            if timestamp:
+                from datetime import datetime
+                if isinstance(timestamp, str):
+                    timestamp_formatado = timestamp
+                else:
+                    timestamp_formatado = timestamp.strftime('%d/%m/%Y %H:%M:%S')
+            else:
+                timestamp_formatado = ''
+            
+            writer.writerow([pergunta, resposta, timestamp_formatado])
+
+        # Criar resposta HTTP
+        response = HttpResponse(
+            buffer.getvalue().encode('utf-8-sig'), 
+            content_type='text/csv; charset=utf-8'
+        )
+        response['Content-Disposition'] = f'attachment; filename="chat_{chat_id}.csv"'
+        
+        print(f"[DEBUG] CSV gerado com sucesso ({len(chat.get('mensagens', []))} mensagens)")
+        return response
+
+    except Exception as e:
+        print(f"[ERRO] Erro ao gerar CSV: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
