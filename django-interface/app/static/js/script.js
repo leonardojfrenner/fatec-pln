@@ -167,10 +167,18 @@ function adicionarChatNaLista(chat) {
     }
   );
 
+  const horaFormatada = new Date(chat.atualizado_em).toLocaleTimeString(
+    "pt-BR",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+
   chatItem.innerHTML = `
           <div class="chat-item-content" onclick="carregarChat('${chat._id}')">
             <div class="chat-item-title">${chat.titulo}</div>
-            <div class="chat-item-date">${dataFormatada}</div>
+            <div class="chat-item-date">${dataFormatada} às ${horaFormatada}</div>
           </div>
           <div class="chat-item-actions">
             <button class="chat-action-btn delete" onclick="deletarChat(event, '${chat._id}')" title="Deletar">
@@ -343,9 +351,9 @@ async function enviarMensagemComStreaming(message) {
 
       for (const line of lines) {
         if (!line.trim()) continue;
-        
+
         console.log("[STREAM] Linha recebida:", line);
-        
+
         if (line.startsWith("event:")) {
           currentEvent = line.slice(7).trim();
           console.log("[STREAM] Evento:", currentEvent);
@@ -359,8 +367,7 @@ async function enviarMensagemComStreaming(message) {
           // Processar eventos baseado no tipo
           if (currentEvent === "start") {
             console.log("[STREAM] Início do processamento");
-          } 
-          else if (currentEvent === "thinking_start") {
+          } else if (currentEvent === "thinking_start") {
             console.log("[STREAM] Iniciando thinking");
             if (firstMessage) {
               const welcome = document.querySelector(".welcome-text");
@@ -370,32 +377,33 @@ async function enviarMensagemComStreaming(message) {
 
             thinkingElement = document.createElement("div");
             thinkingElement.classList.add("message", "thinking");
-            thinkingElement.innerHTML = '<span class="thinking-label">🤔 Pensando:</span>';
+            thinkingElement.innerHTML =
+              '<span class="thinking-label">🤔 Pensando:</span>';
             chatArea.appendChild(thinkingElement);
             scrollToBottom();
-          } 
-          else if (currentEvent === "thinking" && data.word) {
+          } else if (currentEvent === "thinking" && data.word) {
             console.log("[STREAM] Thinking word:", data.word);
             thinkingText += data.word + " ";
             if (thinkingElement) {
               thinkingElement.innerHTML = `<span class="thinking-label">🤔 Pensando:</span>${thinkingText}<span class="streaming-cursor"></span>`;
               scrollToBottom();
             }
-          } 
-          else if (currentEvent === "thinking_end") {
+          } else if (currentEvent === "thinking_end") {
             console.log("[STREAM] Thinking finalizado");
             if (thinkingElement) {
               thinkingElement.innerHTML = `<span class="thinking-label">🤔 Pensando:</span>${thinkingText}`;
             }
-          } 
-          else if (currentEvent === "response_start") {
+          } else if (currentEvent === "response_start") {
             console.log("[STREAM] Iniciando resposta");
             responseElement = document.createElement("div");
-            responseElement.classList.add("message", "bot", "streaming-message");
+            responseElement.classList.add(
+              "message",
+              "bot",
+              "streaming-message"
+            );
             chatArea.appendChild(responseElement);
             scrollToBottom();
-          } 
-          else if (currentEvent === "response" && data.word) {
+          } else if (currentEvent === "response" && data.word) {
             console.log("[STREAM] Response word:", data.word);
             responseText += data.word + " ";
             if (responseElement) {
@@ -407,8 +415,7 @@ async function enviarMensagemComStreaming(message) {
 
               scrollToBottom();
             }
-          } 
-          else if (currentEvent === "complete") {
+          } else if (currentEvent === "complete") {
             console.log("[STREAM] Completo!", data);
             if (responseElement) {
               responseElement.textContent = responseText.trim();
@@ -421,8 +428,7 @@ async function enviarMensagemComStreaming(message) {
 
             sendBtn.disabled = false;
             console.log("[STREAM] Concluído!");
-          }
-          else if (currentEvent === "error") {
+          } else if (currentEvent === "error") {
             console.error("[STREAM] Erro:", data.message);
             appendMessage("bot", `⚠️ ${data.message}`);
             sendBtn.disabled = false;
