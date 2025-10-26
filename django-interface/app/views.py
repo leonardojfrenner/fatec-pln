@@ -113,7 +113,6 @@ def pergunta_stream(request):
                 
                 # 1. Enviar evento de início
                 yield f"event: start\ndata: {json.dumps({'message': 'Processando...'})}\n\n"
-                time.sleep(0.1)
                 
                 # 2. Chamar API do modelo
                 print(f"[STREAM] Chamando API para: {pergunta_usuario}")
@@ -131,26 +130,23 @@ def pergunta_stream(request):
                     # 3. Streaming do THINKING (se habilitado)
                     if show_thinking and thinking_text:
                         yield f"event: thinking_start\ndata: {json.dumps({'message': 'Pensando...'})}\n\n"
-                        time.sleep(0.2)
                         
-                        # Enviar thinking palavra por palavra
+                        # Enviar thinking palavra por palavra (mais rápido)
                         words = thinking_text.split()
                         for i, word in enumerate(words):
                             yield f"event: thinking\ndata: {json.dumps({'word': word, 'index': i})}\n\n"
-                            time.sleep(0.05)  # 50ms entre palavras
+                            time.sleep(0.01)  # 10ms entre palavras (5x mais rápido)
                         
                         yield f"event: thinking_end\ndata: {json.dumps({'message': 'Pensamento concluído'})}\n\n"
-                        time.sleep(0.3)
                     
                     # 4. Streaming da RESPOSTA
                     yield f"event: response_start\ndata: {json.dumps({'message': 'Respondendo...'})}\n\n"
-                    time.sleep(0.2)
                     
-                    # Enviar resposta palavra por palavra
+                    # Enviar resposta palavra por palavra (mais rápido)
                     words = response_text.split()
                     for i, word in enumerate(words):
                         yield f"event: response\ndata: {json.dumps({'word': word, 'index': i, 'total': len(words)})}\n\n"
-                        time.sleep(0.08)  # 80ms entre palavras
+                        time.sleep(0.02)  # 20ms entre palavras (4x mais rápido)
                     
                     # 5. Salvar no MongoDB
                     chat_manager = ChatManager()
