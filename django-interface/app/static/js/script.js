@@ -11,6 +11,70 @@ window.addEventListener("load", () => {
   carregarChats();
 });
 
+let chatParaEditar = null;
+
+function abrirModalEdicao(chatId, tituloAtual) {
+  chatParaEditar = chatId;
+  const input = document.getElementById("novoTituloInput");
+  input.value = tituloAtual || "";
+  document.getElementById("editTitleModal").style.display = "block";
+  input.focus();
+}
+
+function fecharModalEdicao() {
+  document.getElementById("editTitleModal").style.display = "none";
+  chatParaEditar = null;
+  document.getElementById("novoTituloInput").value = "";
+}
+
+async function salvarEdicao() {
+  if (!chatParaEditar) return;
+
+  const novoTitulo = document.getElementById("novoTituloInput").value.trim();
+  if (!novoTitulo) return alert("O título não pode ser vazio.");
+
+  try {
+    const res = await fetch(
+      `http://localhost:8001/chats/${chatParaEditar}/titulo`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ titulo: novoTitulo }),
+      }
+    );
+
+    if (!res.ok) throw new Error("Erro ao atualizar título");
+
+    // Atualiza visualmente na lista
+    const chatItem = document.querySelector(
+      `[data-chat-id="${chatParaEditar}"]`
+    );
+    if (chatItem)
+      chatItem.querySelector(".chat-item-title").textContent = novoTitulo;
+
+    fecharModalEdicao();
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao atualizar título.");
+  }
+}
+
+// Botões do modal
+document
+  .getElementById("cancelarEdicaoBtn")
+  .addEventListener("click", fecharModalEdicao);
+document
+  .getElementById("salvarEdicaoBtn")
+  .addEventListener("click", salvarEdicao);
+
+// Fecha modal clicando fora
+window.addEventListener("click", (e) => {
+  const modal = document.getElementById("editTitleModal");
+  if (e.target === modal) fecharModalEdicao();
+});
+
 function scrollToBottom() {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -181,7 +245,15 @@ function adicionarChatNaLista(chat) {
             <div class="chat-item-date">${dataFormatada} às ${horaFormatada}</div>
           </div>
           <div class="chat-item-actions">
-            <button class="chat-action-btn delete" onclick="deletarChat(event, '${chat._id}')" title="Deletar">
+            <button class="chat-action-btn edit" onclick="abrirModalEdicao('${
+              chat._id
+            }', '${chat.titulo.replace(/'/g, "\\'")}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+
+            <button class="chat-action-btn delete" onclick="deletarChat(event, '${
+              chat._id
+            }')" title="Deletar">
               <i class="fas fa-trash"></i>
             </button>
           </div>
