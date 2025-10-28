@@ -81,7 +81,7 @@
       <div class="modal-content">
         <p>Tem certeza que deseja deletar este chat?</p>
         <div class="modal-buttons">
-          <button id="cancelarBtn">Cancelar</button>
+          <button class="secondary" id="cancelarBtn">Cancelar</button>
           <button id="confirmarBtn" class="danger">Deletar</button>
         </div>
       </div>
@@ -102,6 +102,23 @@
         <button class="close-btn" id="fecharModal">
           <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+    </div>
+
+    <!-- Modal de edição de título -->
+    <div id="editTitleModal" class="modal">
+      <div class="modal-content">
+        <h3>Editar Título do Chat</h3>
+        <input
+          type="text"
+          id="novoTituloInput"
+          placeholder="Digite o novo título"
+          class="input-modal"
+        />
+        <div class="modal-buttons">
+          <button class="secondary" id="cancelarEdicaoBtn">Cancelar</button>
+          <button id="salvarEdicaoBtn" class="primary">Salvar</button>
+        </div>
       </div>
     </div>
   </body>
